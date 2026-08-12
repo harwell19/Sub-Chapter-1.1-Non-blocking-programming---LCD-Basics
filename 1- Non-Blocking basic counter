@@ -1,0 +1,54 @@
+/*
+Project: Sub-Chapter 1.1 - LCD Non-Blocking Basics & Counter
+Author: Harwell Mejia
+Tutor: GEMINI
+Hardware:
+- Arduino UNO
+- I2C LCD 16x2 (SDA -> A4, SCL -> A5)
+Software:
+- Arduino C++
+*/
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+//== Telemetry parametres == 
+unsigned long Count = 0;
+
+//== Non-blocking LCD refreshing timer parameters ==
+unsigned long lastLCDMillis = 0; //Timer starting 
+const unsigned long lcdInterval = 100; //Reading debounce time in miliseconds
+
+void setup(){
+  Serial.begin(115200);
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+  //Print static text in teh lcd
+  lcd.setCursor(0,0);
+  lcd.print("System status: ");
+  lcd.setCursor(0,1);
+  lcd.print("Count: ");
+}
+
+void loop(){
+  // == Task 1 - Non blocking LCD timer refresh ==
+  unsigned long currentLCDMillis = millis();
+  if(currentLCDMillis - lastLCDMillis >= lcdInterval){
+    lastLCDMillis += currentLCDMillis;
+    Count++;
+    // == Print Count result in the 2nd row, 7th column ==
+    lcd.setCursor(7,1);
+    lcd.print(Count);
+    lcd.print("            ");  //Remove leftover number
+    
+    // == Optional telemetry to data verification == 
+    Serial.print("Count: ");
+    Serial.println(Count);
+  }
+}
+
+    
+      
