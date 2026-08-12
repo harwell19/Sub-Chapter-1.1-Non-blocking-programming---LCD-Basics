@@ -1,0 +1,67 @@
+/*
+roject: Sub-Chapter 1.2 - LCD Non-Blocking Counter + Blinking LED
+Author: Harwell Mejia
+Tutor: GEMINI
+Hardware:
+- Arduino UNO
+- I2C LCD 16x2 (SDA -> A4, SCL -> A5)
+- Led x 1
+- 330 ohm resistor x 1
+Software:
+- Arduino C++ - Run and simulated in ThinkerCad
+*/
+//LCD library
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+//Define LED pin
+#define	redLed 2
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);//Define LCD type
+
+//Telemetry parameters
+int Count = 0;
+int ledState = LOW;
+
+//== Non-blocking lcd timer ==
+unsigned long lastLCDmillis = 0; //Timer starting point
+const unsigned long lcdInterval = 150;
+
+//== Non-blocking led blinking timer ==
+unsigned long lastBlinkMillis = 0;
+const unsigned long blinkInterval = 500;
+
+void setup(){
+  pinMode(redLed, OUTPUT);
+  //Initializing LCD
+  lcd.init();
+  lcd.backlight();
+  
+  lcd.setCursor(0,0);
+  lcd.print("Arduino == ");
+  lcd.setCursor(12,0);
+  lcd.print("LED: ");
+}
+
+void loop(){
+  //== Independient task - non-blocking timer for LCD ==
+  unsigned long currentLCDmillis = millis();
+  if(currentLCDmillis - lastLCDmillis >= lcdInterval){
+    lastLCDmillis += lcdInterval;
+    Count++;
+    
+    lcd.setCursor(0,1);
+    lcd.print("Count: ");
+    lcd.setCursor(7,1);
+    lcd.print(Count);
+  }
+  //== Independient task - non-blocking timer for blinking LED ==
+  unsigned long currentBlinkMillis = millis();
+  if(currentBlinkMillis - lastBlinkMillis >= blinkInterval){
+    lastBlinkMillis += blinkInterval;
+    ledState =(ledState == LOW)? HIGH:LOW;
+    //Telemetry LED state in LCD
+    digitalWrite(redLed, ledState);
+    lcd.setCursor(12,1);
+    lcd.print(ledState? "ON  ":"OFF");
+  }
+}
