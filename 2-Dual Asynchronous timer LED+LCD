@@ -1,5 +1,5 @@
 /*
-roject: Sub-Chapter 1.2 - LCD Non-Blocking Counter + Blinking LED
+roject: Sub-Chapter 1.2 - Dual Asynchronous timer LED+LCD
 Author: Harwell Mejia
 Tutor: GEMINI
 Hardware:
