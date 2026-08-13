@@ -1,0 +1,117 @@
+/*
+Project: Sub-Chapter 1.2b - Dual Asynchronous timer with toggle switch
+Author: Harwell Mejia
+Tutor: GEMINI and ChatGPT
+Hardware:
+- Arduino UNO
+- I2C LCD 16x2 (SDA -> A4, SCL -> A5)
+- Led x 3
+- 330 ohm resistor x 3
+- Push button x 1
+Software:
+- Arduino C++ - Run and simulated in ThinkerCad
+*/
+
+//LCD Library
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+#define switchPin 2
+#define	greenLed 3
+#define redLed 4
+#define blueLed 5
+
+//==Telemetry parameters ==
+int systemState = LOW;
+int ledState = LOW;
+long ledCount = 0;
+long stepCount = 0; 
+
+//==Non-blocking timer parameters ==
+unsigned long lastBlinkMillis = 0;
+const unsigned long blinkInterval = 500;
+
+unsigned long lastLcdMillis = 0;
+const unsigned long lcdInterval = 250;
+
+//==Non-blocking toggle parameters==
+int lastSwitchRead = HIGH;
+int switchStableState = HIGH;
+unsigned long lastBounceTime = 0;
+const unsigned long switchDebounceTime = 50;
+
+void setup(){
+  Serial.begin(115200);
+  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(redLed, OUTPUT);
+  
+  lcd.init();
+  lcd.backlight();
+  
+  lcd.setCursor(0,0);
+  lcd.print("ARDUINO");
+  lcd.print(" ");
+  lcd.print(systemState? "ON ":"OFF");
+  
+  digitalWrite(redLed, !systemState);
+  digitalWrite(greenLed, systemState);
+  digitalWrite(blueLed, systemState);
+}
+void loop(){
+  //=== Task 1 - setting toggle ===
+  //1.1 Reading electric signal
+  int currentRead = digitalRead(switchPin);
+
+  //1.2 Detect electric change
+  if(currentRead != lastSwitchRead){
+    lastSwitchRead = currentRead;
+    lastBounceTime = millis();
+  }
+  
+  //1.3 Check debounce time
+  if(millis() - lastBounceTime >= switchDebounceTime){
+    
+    //1.4 Detect stable state
+    if(currentRead != switchStableState){
+       switchStableState = currentRead;
+       
+      //1.5 Valid press button
+       if(switchStableState == LOW){
+         systemState = !systemState;         //Starting the system
+         digitalWrite(greenLed, systemState);
+         digitalWrite(redLed, !systemState);
+         lcd.setCursor(0,0);
+  		 lcd.print("ARDUINO");
+	     lcd.print(" ");
+  		 lcd.print(systemState? "ON ":"OFF");
+       }
+    }
+  }
+  
+  //=== Task 2 ===
+  //2.1 Initializing counting and blinking when toggle switch is ON
+  if(systemState == HIGH){
+    unsigned long currentMillis = millis();
+    //2.2 Non-blocking timer for LED blinking
+    if(currentMillis - lastBlinkMillis >= blinkInterval){
+      lastBlinkMillis += blinkInterval;
+      ledState = !ledState;
+      digitalWrite(blueLed,ledState);
+      //2.2a optional - counting LED Blinks
+      if(ledState == HIGH){
+        ledCount++;
+        lcd.setCursor(0,1);
+        lcd.print("Blinks: ");
+        lcd.print(ledCount);
+      }
+    }
+    
+    //=== Task 3 - Non-blocking timer LCD refresh ==
+    if(currentMillis - lastLcdMillis >= lcdInterval){
+      lastLcdMillis += lcdInterval;
+      stepCount++;
+      lcd.setCursor(11,0);
+      lcd.print(stepCount);
+    }
+  }
+}
