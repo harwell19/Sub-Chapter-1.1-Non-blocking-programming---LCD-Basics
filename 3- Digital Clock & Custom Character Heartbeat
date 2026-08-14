@@ -1,0 +1,150 @@
+/*
+Practice of subchapter 1
+Digital Clock & Custom Character Heartbeat
+Author : Harwell Mejia
+Tutor: GEMINI
+Feature:
+- System uptime clock MM:SS
+- Independient heart beating 
+Hardware setup:
+- Arduino UNO
+- LCD 16x2 +I2C drive (0x27 or 0x3F)
+
+Customized character Creator website:
+https://maxpromer.github.io/LCD-Character-Creator/
+https://chareditor.com/
+
+Run and simulated in ThinkerCad
+*/
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// Set the LCD address to 0x27 in PCF8574 by NXP and Set to 0x3F in PCF8574A by Ti
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+byte name1x2[] = { B00000, 
+                   B01010, 
+                   B10101, 
+                   B10001,
+                   B01010,
+                   B01010,
+                   B00100,
+                   B00000 };
+
+//== Non-blocking LCD (Heart beating) refresh
+unsigned long lastHeartMillis = 0;
+const int HBM = 45; 		 // Times 2 due two the blank interval (blinking period)
+unsigned long heartInterval; //HeartBeat per Minutes
+
+unsigned long lastBlankMillis = 0;
+unsigned long blankInterval;
+
+// == Non-blocking Clock ======
+long secCount = 0;  //Unit of seconds
+unsigned long lastSecMillis = 0;
+const unsigned long secInterval = 1000.;
+
+long dSecCount = 0; // Unit of dozens of secons
+unsigned long lastDsecMillis = 0;
+const unsigned long dsecInterval = 10000.;
+
+long minCount = 0;  // Unit of minutes
+unsigned long lastMinMillis = 0;
+const unsigned long minInterval = 60000.;
+
+long dminCount = 0; // Unit of dozens of minutes
+unsigned long lastDminMillis = 0;
+const unsigned long dminInterval = 600000;
+
+void setup() {
+  Serial.begin(115200);
+  lcd.init();
+  lcd.backlight();
+  
+  //Set chart position
+  lcd.createChar(0, name1x2);
+  lcd.setCursor(2, 1);
+  lcd.write(0);
+  
+  //Heartbeat pulse calculation
+  heartInterval = 60000. / HBM ;  
+  blankInterval = 60000./ (2.* HBM); // Blink in the half of the time
+  
+  //Set clock
+  lcd.setCursor(0,0);
+  lcd.print("00");
+  lcd.print(":");
+  lcd.print("00");
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+ //======================================================
+ //Task 1 - Non-blocking Heartbeating pulse 
+  if(currentMillis - lastHeartMillis >= heartInterval){
+    lastHeartMillis += heartInterval;
+    lcd.setCursor(4,1);
+    lcd.print("* ");
+  }
+  if(currentMillis - lastBlankMillis >= blankInterval){
+    lastBlankMillis += blankInterval;
+    lcd.setCursor(4,1);
+    lcd.print(" ");
+  }
+  //======================================================
+  //Task 2 - Non-blocking timer "CLOCK"
+  //2.1 Seconds counter
+  if(currentMillis - lastSecMillis >= secInterval){
+    lastSecMillis += secInterval;
+    secCount = constrain(secCount + 1., 0, 10.);
+    
+    if(secCount >= 10.){ //Print max number = 9, then return to 0
+      secCount = 0;  
+    }
+    lcd.setCursor(4,0);
+    lcd.print(secCount); //Seconds printed in lcd monbitor 
+    
+    Serial.print(dminCount);
+    Serial.print(minCount);
+    Serial.print(" : ");
+    Serial.print(dSecCount);
+    Serial.println(secCount);
+  }
+  
+  //2.2 dozen of seconds counter
+  if(currentMillis - lastDsecMillis >= dsecInterval){
+    lastDsecMillis += dsecInterval;
+    dSecCount = constrain(dSecCount + 1., 0, 6.);
+    
+    if(dSecCount >= 6){
+      dSecCount = 0;
+    }
+    lcd.setCursor(3,0);
+    lcd.print(dSecCount);
+  }
+  
+  //2.3 minutes counter
+  if(currentMillis - lastMinMillis >= minInterval){
+    lastMinMillis += minInterval;
+    minCount = constrain(minCount + 1., 0, 10.);
+    
+    if(minCount >= 10.){
+      minCount = 0;
+    }
+    lcd.setCursor(1,0);
+    lcd.print(minCount);
+  }
+  
+  //2.4 dozen of minutes
+  if(currentMillis - lastDminMillis >= dminInterval){
+    lastDminMillis += dminInterval;
+    dminCount = constrain(dminCount + 1., 0, 6.);
+    
+    if(dminCount >= 6.){
+      dminCount = 0;
+    }
+    lcd.setCursor(0,0);
+    lcd.print(dminCount);
+  }
+}
