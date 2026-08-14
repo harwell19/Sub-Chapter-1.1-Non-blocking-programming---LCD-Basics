@@ -1,0 +1,110 @@
+/*
+Project: Toggle switch and heart chart
+Author: Harwell Mejia
+Tutor: GEMINI and ChatGPT
+Feature:
+- Non-blocking lcd refresh
+- Non-blocking toggle switch
+Date: 
+2026/08/14
+
+Chart creator website:
+https://chareditor.com/
+https://maxpromer.github.io/LCD-Character-Creator/
+Run and simulated in ThinkerCad */
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+#define switchPin 4
+#define redPin 3
+#define greenPin 2
+
+// Custom Heart Character (5x8 Bitmap)
+byte heartChar[8] = {
+  B00000,
+  B01010,
+  B10101,
+  B10001,
+  B01010,
+  B01010,
+  B00100,
+  B00000
+};
+//==Telemetry parameters==
+int systemState = LOW;
+bool heartState = false;
+
+//==Non-blocking timer parameters
+unsigned long lastHBMTime = 0;  //Last millis
+const unsigned long hbmInterval = 666; //90 HBM
+
+//== Toggle parameters and timer ==
+unsigned long switchBounceTime = 0;
+unsigned long DebounceDelay = 50;
+int stableSwitchState = HIGH;
+int lastSwitchRead = HIGH;
+
+void setup(){
+  Serial.begin(115200);
+  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(4,0);
+  lcd.print("Arduino");
+  lcd.setCursor(0,1);
+  lcd.print("HBM: ");
+  
+  lcd.createChar(0, heartChar);
+  
+  digitalWrite(redPin, !systemState);
+  digitalWrite(greenPin, systemState);
+}
+
+void loop(){
+  //== Task 1 - Toggle sitch ==
+  //1.1. Reading electric signal
+  int currentSwitchRead = digitalRead(switchPin);
+  
+  //1.2. Detect electric change
+  if(currentSwitchRead != lastSwitchRead){
+    switchBounceTime = millis();
+    lastSwitchRead = currentSwitchRead;
+  }
+  
+  //1.3 Check bounce time
+  if(millis() - switchBounceTime >= DebounceDelay){
+    //1.4 Detect stable state change
+    if(currentSwitchRead != stableSwitchState){
+      stableSwitchState = currentSwitchRead;
+      //1.5 Valid button press
+      if(stableSwitchState == LOW){
+        systemState = !systemState;
+        digitalWrite(greenPin, systemState);
+        digitalWrite(redPin, !systemState);
+      }
+    }
+  }
+  //=== Task 2 - Heartbeat pulse ===
+  if(systemState == HIGH){
+    
+    unsigned long currentHBMTime = millis();
+    
+    if(currentHBMTime - lastHBMTime >= hbmInterval){
+      lastHBMTime += hbmInterval;
+      heartState = !heartState;
+      
+      lcd.setCursor(5,1);
+      if(heartState){
+        lcd.write(0);
+      }
+      else{
+        lcd.print(" ");
+      }
+    }
+  }
+}
