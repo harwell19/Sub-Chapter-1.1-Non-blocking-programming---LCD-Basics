@@ -1,0 +1,101 @@
+/*
+Practice 1.1 Solution - Optimized Non-Blocking Clock & Heartbeat
+The original code is in projec 3- Non-Blocking Clock & Heartbeat
+This is the optimized version, polished by GEMINI
+Author : Harwell Mejia
+Refactored by: GEMINI
+Date = 2026/08/14
+*/
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// Custom Heart Character (5x8 Bitmap)
+byte heartChar[8] = {
+  B00000,
+  B01010,
+  B10101,
+  B10001,
+  B01010,
+  B01010,
+  B00100,
+  B00000
+};
+
+// === Timers & Intervals ===
+unsigned long lastClockMillis = 0;
+const unsigned long clockInterval = 1000; // Update clock every 1 sec
+
+unsigned long lastHeartMillis = 0;
+const unsigned long heartInterval = 666;  // ~45 BPM (60000 ms / 45 = 1333 ms full cycle, 666 ms per state)
+bool heartState = false;
+
+void setup() {
+  Serial.begin(115200);
+  lcd.init();
+  lcd.backlight();
+
+  // Register custom char at index 0
+  lcd.createChar(0, heartChar);
+  
+  // Render static elements ONCE
+  lcd.setCursor(0, 0);
+  lcd.print("00:00");
+  
+  lcd.setCursor(0, 1);
+  lcd.print("BPM:");
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+
+  // =======================================================
+  // Task 1: Non-Blocking Animated Heartbeat (45 BPM State Toggle)
+  // =======================================================
+  if (currentMillis - lastHeartMillis >= heartInterval) {
+    lastHeartMillis += heartInterval;
+    heartState = !heartState; // Toggle state between ON and OFF
+
+    lcd.setCursor(5, 1);
+    if (heartState) {
+      lcd.write(0); // Print custom heart character
+    } else {
+      lcd.print(" "); // Overwrite with space
+    }
+  }
+
+  // =======================================================
+  // Task 2: Non-Blocking Digital Clock (MM:SS)
+  // =======================================================
+  if (currentMillis - lastClockMillis >= clockInterval) {
+    lastClockMillis += clockInterval;
+
+    // Calculate total seconds, minutes, and remaining seconds
+    unsigned long totalSeconds = currentMillis / 1000;
+    unsigned int minutes = (totalSeconds / 60) % 100; // Limit to 99 min
+    unsigned int seconds = totalSeconds % 60;
+
+    // Update Minutes (Row 0, Col 0)
+    lcd.setCursor(0, 0);
+    if (minutes < 10) lcd.print("0");
+    lcd.print(minutes);
+
+    lcd.print(":");
+
+    // Update Seconds (Row 0, Col 3)
+    if (seconds < 10) lcd.print("0");
+    lcd.print(seconds);
+
+    // Debug Telemetry
+    Serial.print("Uptime: ");
+    if (minutes < 10) Serial.print("0");
+    Serial.print(minutes);
+    Serial.print(":");
+    if (seconds < 10) Serial.print("0");
+    Serial.println(seconds);
+  }
+
+  // High-speed tasks remain completely unblocked here!
+}
